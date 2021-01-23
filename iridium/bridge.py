@@ -1,3 +1,5 @@
+import importlib
+
 import discord
 
 
@@ -38,6 +40,7 @@ class BridgeClient(discord.Client):
     def __init__(self, server, **options):
         self.irc = server
         self.guild = None
+        self.commands = self.irc.config.get("commands", {})
         # Make sure we add the members intent, so we can access member information.
         intents = discord.Intents.default()
         intents.members = True
@@ -54,16 +57,24 @@ class BridgeClient(discord.Client):
             print("Unknown guild {}".format(self.irc.config["discord"]["guild_id"]))
 
     async def on_message(self, message):
-        if message.author == self.user:
-            return
-
         if not message.guild or message.guild != self.guild:
             return
 
         if message.channel.type == discord.ChannelType.text:
             channel = self.irc.channels.get(message.channel.name)
             if channel:
-                if channel.webhook and channel.webhook.id == message.webhook_id:
-                    return
-                user = UserProxy(message.author)
-                channel.message(message.clean_content, sender=user)
+                channel.message(message.clean_content, sender=UserProxy(message.author))
+            if message.content.startswith("!") and message.author != self.user:
+                cmd, *args = message.content[1:].split()
+                if cmd in self.commands:
+                    options = self.commands[cmd].copy()
+                    module_path = options.pop("module", "iridium.commands.{}.handle".format(cmd))
+                    mod_name, attr_name = module_path.rsplit(".", 1)
+                    try:
+                        mod = importlib.import_module(mod_name)
+                        mod = importlib.reload(mod)
+                        handler = getattr(mod, attr_name, None)
+                        if handler:
+                            await handler(message, *args, **options)
+                    except ImportError:
+                        pass

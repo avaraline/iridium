@@ -67,7 +67,7 @@ class IRCSession(asyncio.Protocol):
     def message(self, content, sender=None, channel=None):
         if channel:
             # Channel message
-            if sender != self:
+            if sender.nickname != self.nickname:
                 # Don't echo messages back to the sender.
                 self.write("PRIVMSG", channel.irc_name, content, prefix=sender)
         else:

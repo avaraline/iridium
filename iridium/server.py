@@ -41,10 +41,11 @@ class BridgeChannel:
         self.sessions.remove(user)
 
     def message(self, content, sender=None):
-        for session in self.sessions:
-            session.message(content, sender=sender, channel=self)
         if isinstance(sender, IRCSession):
             asyncio.create_task(self.webhook.send(content, username=sender.nickname))
+        else:
+            for session in self.sessions:
+                session.message(content, sender=sender, channel=self)
 
     def users(self):
         for member in self.discord.members:

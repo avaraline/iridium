@@ -26,6 +26,11 @@ def default_config():
                 "webhook": "IRC",
             },
         },
+        "commands": {
+            "weather": {
+                "appid": "",
+            },
+        },
     }
 
 
