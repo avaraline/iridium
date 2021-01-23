@@ -61,6 +61,8 @@ class Server:
         self.sessions = []
         self.name = self.config.get("irc", {}).get("name", "Iridium")
         self.password = self.config.get("irc", {}).get("password", "")
+        self.host = self.config.get("irc", {}).get("bind", "0.0.0.0")
+        self.port = self.config.get("irc", {}).get("port", 6667)
         self.channels = {}
 
     @property
@@ -77,8 +79,9 @@ class Server:
         self.loop = asyncio.get_running_loop()
         self.server = await self.loop.create_server(
             lambda: IRCSession(self),
-            self.config.get("irc", {}).get("bind", "0.0.0.0"),
-            self.config.get("irc", {}).get("port", 6667),
+            host=self.host,
+            port=self.port,
+            start_serving=False,
         )
         self.bridge = BridgeClient(self, loop=self.loop)
         await self.bridge.start(self.config["discord"]["token"])
@@ -94,16 +97,19 @@ class Server:
             options = self.config.get("channels", {}).get(channel.name)
             if options:
                 print("  +", channel.name)
+                old_channel = self.channels.get(channel.name)
                 irc_channel = BridgeChannel(channel)
                 await irc_channel.configure(self.bridge)
+                if old_channel:
+                    irc_channel.sessions.extend(old_channel.sessions)
                 self.channels[channel.name] = irc_channel
+        await self.server.start_serving()
+        print(f"Listening on {self.host}:{self.port}")
 
     async def connected(self, session):
-        print("New connection - {}".format(session))
         self.sessions.append(session)
 
     async def disconnected(self, session):
-        print("Disconnected - {}".format(session))
         for channel in self.channels.values():
             channel.part(session)
         self.sessions.remove(session)
