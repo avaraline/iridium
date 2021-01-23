@@ -129,6 +129,8 @@ class IRCSession(asyncio.Protocol):
         if not channel:
             self.write(ERR.NOSUCHCHANNEL, params[0], "No such channel")
             return
+        if self in channel.sessions:
+            return
         channel.join(self)
         if channel.topic:
             self.write(RPL.TOPIC, self.nickname, channel.irc_name, channel.topic)
