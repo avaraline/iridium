@@ -83,6 +83,11 @@ class Server:
         self.bridge = BridgeClient(self, loop=self.loop)
         await self.bridge.start(self.config["discord"]["token"])
 
+    async def stop(self):
+        self.server.close()
+        await self.server.wait_closed()
+        await self.bridge.logout()
+
     async def bridge_ready(self):
         print("Discord bridge ready, configuring channels...")
         for channel in self.bridge.guild.text_channels:
@@ -106,6 +111,9 @@ class Server:
     def valid_nick(self, nick):
         for session in self.sessions:
             if session.nickname == nick:
+                return False
+        for member in self.bridge.guild.members:
+            if member.display_name == nick:
                 return False
         return True
 

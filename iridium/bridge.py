@@ -66,4 +66,4 @@ class BridgeClient(discord.Client):
                 if channel.webhook and channel.webhook.id == message.webhook_id:
                     return
                 user = UserProxy(message.author)
-                channel.message(message.content, sender=user)
+                channel.message(message.clean_content, sender=user)

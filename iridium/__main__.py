@@ -40,7 +40,17 @@ def main():
     except FileNotFoundError:
         print(f"Could not load configuration from {args.config}", file=sys.stderr, flush=True)
         return 1
-    asyncio.run(Server(config).start())
+    server = Server(config)
+    loop = asyncio.get_event_loop()
+    try:
+        loop.create_task(server.start())
+        loop.run_forever()
+    except KeyboardInterrupt:
+        loop.run_until_complete(server.stop())
+        loop.run_until_complete(loop.shutdown_asyncgens())
+        # loop.run_until_complete(loop.shutdown_default_executor())
+    finally:
+        loop.close()
     return 0
 
 

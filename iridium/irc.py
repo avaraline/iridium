@@ -43,14 +43,14 @@ class IRCSession(asyncio.Protocol):
         self.buffer += data
         *lines, self.buffer = self.buffer.split(b"\r\n")
         for line in lines:
-            parts = line.decode("utf-8").split(":", 2)
-            if parts[0]:
-                prefix = None
-                cmd, *params = parts[0].strip().split(" ")
-                params.extend(parts[1:])
-            else:
-                prefix, cmd, *params = parts[1].strip().split(" ")
-                params.extend(parts[2:])
+            line = line.decode("utf-8")
+            prefix = None
+            if line.startswith(":"):
+                prefix, line = line[1:].split(None, 1)
+            parts = line.split(" :", 1)
+            cmd, *params = parts[0].split()
+            if len(parts) > 1:
+                params.append(parts[1])
             handler = getattr(self, "handle_{}".format(cmd.upper()), None)
             if handler:
                 # TODO: check authentication for non-login-related commands
@@ -114,12 +114,13 @@ class IRCSession(asyncio.Protocol):
         if not params or params[0] == self.nickname:
             return
         if self.server.valid_nick(params[0]):
+            old_nickname = self.nickname
             self.nickname = params[0]
-            if self.authenticated:
-                # TODO: send user.modified
-                pass
-            else:
+            if not self.authenticated:
                 await self.check_login()
+            elif self.nickname != old_nickname:
+                for session in self.server.sessions:
+                    session.write("NICK", self.nickname, prefix=old_nickname)
         else:
             self.write(ERR.NICKNAMEINUSE, "*", "Nickname is already in use.")
 
