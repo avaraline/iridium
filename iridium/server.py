@@ -17,6 +17,10 @@ class BridgeChannel:
         self.default = False
         self.log = False
 
+    @property
+    def num_users(self):
+        return len(self.sessions) + len(self.members)
+
     async def configure(self, bridge, **options):
         channel = bridge.named_channel(self.name)
         webhook_name = options.get("webhook", "IRC")
@@ -34,8 +38,9 @@ class BridgeChannel:
 
     async def sync(self, bridge):
         channel = bridge.named_channel(self.name)
-        if channel.topic != self.topic:
-            self.topic = channel.topic
+        new_topic = channel.topic or ""
+        if new_topic != self.topic:
+            self.topic = new_topic
             for session in self.sessions:
                 session.write("TOPIC", self.irc_name, self.topic)
         new_members = {m.name: UserProxy(m) for m in channel.members}

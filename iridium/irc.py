@@ -48,6 +48,8 @@ class IRCSession(asyncio.Protocol):
             if line.startswith(":"):
                 prefix, line = line[1:].split(None, 1)
             parts = line.split(" :", 1)
+            if not parts:
+                continue
             cmd, *params = parts[0].split()
             if len(parts) > 1:
                 params.append(parts[1])
@@ -182,6 +184,18 @@ class IRCSession(asyncio.Protocol):
                     "0 " + user.realname,
                 )
             self.write(RPL.ENDOFWHO, self.nickname, channel.irc_name, "End of WHO list")
+
+    async def handle_LIST(self, *params, prefix=None):
+        self.write(RPL.LISTSTART, self.nickname, "Channel Users Topic")
+        for channel in self.server.channels.values():
+            self.write(
+                RPL.LIST,
+                self.nickname,
+                channel.irc_name,
+                str(channel.num_users),
+                channel.topic,
+            )
+        self.write(RPL.LISTEND, self.nickname, "End of LIST")
 
     async def handle_QUIT(self, *params, prefix=None):
         self.write("ERROR", "Bye for now!")
