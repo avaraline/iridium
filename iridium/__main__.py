@@ -14,6 +14,7 @@ def default_config():
             "bind": "0.0.0.0",
             "port": 6667,
             "password": "",
+            "automap": True,
         },
         "discord": {
             "token": "",

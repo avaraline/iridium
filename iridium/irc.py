@@ -125,7 +125,7 @@ class IRCSession(asyncio.Protocol):
             self.write(ERR.NICKNAMEINUSE, "*", "Nickname is already in use.")
 
     async def handle_JOIN(self, *params, prefix=None):
-        channel = self.server.channel(params[0][1:])
+        channel = self.server.channels.get(params[0][1:])
         if not channel:
             self.write(ERR.NOSUCHCHANNEL, params[0], "No such channel")
             return
@@ -150,7 +150,7 @@ class IRCSession(asyncio.Protocol):
     async def handle_PART(self, *params, prefix=None):
         for name in params[0].split(","):
             channel = self.server.channels.get(name[1:])
-            if channel:
+            if channel and self in channel.sessions:
                 channel.part(self)
 
     async def handle_PRIVMSG(self, *params, prefix=None):

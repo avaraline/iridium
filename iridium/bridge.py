@@ -5,7 +5,10 @@ import discord
 
 class UserProxy:
     def __init__(self, member):
-        self.member = member
+        self.nickname = member.display_name.replace(" ", "_")
+        self.username = member.name.replace(" ", "_")
+        self.hostname = "discord.gg"
+        self.realname = member.display_name
 
     def __str__(self):
         return f"{self.nickname}!{self.username}@{self.hostname}"
@@ -19,22 +22,6 @@ class UserProxy:
     def message(self, content, sender=None):
         pass
 
-    @property
-    def nickname(self):
-        return self.member.display_name
-
-    @property
-    def username(self):
-        return self.member.name
-
-    @property
-    def hostname(self):
-        return "discord"
-
-    @property
-    def realname(self):
-        return self.member.display_name
-
 
 class BridgeClient(discord.Client):
     def __init__(self, server, **options):
@@ -46,6 +33,11 @@ class BridgeClient(discord.Client):
         intents.members = True
         options["intents"] = intents
         super().__init__(**options)
+
+    def named_channel(self, name):
+        for channel in self.guild.text_channels:
+            if channel.name == name:
+                return channel
 
     async def on_ready(self):
         for guild in self.guilds:
@@ -64,6 +56,7 @@ class BridgeClient(discord.Client):
             channel = self.irc.channels.get(message.channel.name)
             if channel:
                 channel.message(message.clean_content, sender=UserProxy(message.author))
+            # Handle chat commands.
             if message.content.startswith("!") and message.author != self.user:
                 cmd, *args = message.content[1:].split()
                 if cmd in self.commands:
@@ -78,3 +71,27 @@ class BridgeClient(discord.Client):
                             await handler(message, *args, **options)
                     except ImportError:
                         pass
+
+    async def on_guild_channel_delete(self, channel):
+        await self.irc.reconfigure()
+
+    async def on_guild_channel_create(self, channel):
+        await self.irc.reconfigure()
+
+    async def on_guild_channel_update(self, before, after):
+        await self.irc.sync_channels()
+
+    async def on_member_join(self, member):
+        await self.irc.sync_channels()
+
+    async def on_member_remove(self, member):
+        await self.irc.sync_channels()
+
+    async def on_member_update(self, before, after):
+        old_nickname = UserProxy(before).nickname
+        new_nickname = UserProxy(after).nickname
+        if old_nickname != new_nickname:
+            for session in self.irc.sessions:
+                if session.authenticated:
+                    session.write("NICK", new_nickname, prefix=old_nickname)
+        await self.irc.sync_channels()
