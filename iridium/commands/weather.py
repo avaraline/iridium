@@ -7,10 +7,13 @@ async def handle(message, *args, appid=None):
     if not appid:
         return
     params = {
-        "zip": args[0],
         "units": "imperial",
         "appid": appid,
     }
+    if len(args) == 1 and args[0].isdigit():
+        params["zip"] = args[0]
+    else:
+        params["q"] = " ".join(args)
     async with aiohttp.ClientSession() as session:
         async with session.get(ENDPOINT, params=params) as resp:
             data = await resp.json()

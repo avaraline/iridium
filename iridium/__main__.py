@@ -31,6 +31,12 @@ def default_config():
             "weather": {
                 "appid": "",
             },
+            "issue": {
+                "user": "",
+                "token": "",
+                "repo": "",
+                "labels": [],
+            },
         },
     }
 

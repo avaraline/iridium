@@ -1,4 +1,5 @@
 import importlib
+import shlex
 
 import discord
 
@@ -58,7 +59,7 @@ class BridgeClient(discord.Client):
                 channel.message(message.clean_content, sender=UserProxy(message.author))
             # Handle chat commands.
             if message.content.startswith("!") and message.author != self.user:
-                cmd, *args = message.content[1:].split()
+                cmd, *args = shlex.split(message.content[1:])
                 if cmd in self.commands:
                     options = self.commands[cmd].copy()
                     module_path = options.pop("module", "iridium.commands.{}.handle".format(cmd))
@@ -70,6 +71,8 @@ class BridgeClient(discord.Client):
                         if handler:
                             await handler(message, *args, **options)
                     except ImportError:
+                        pass
+                    except Exception:
                         pass
 
     async def on_guild_channel_delete(self, channel):
