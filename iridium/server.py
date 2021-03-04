@@ -147,6 +147,8 @@ class Server:
         self.server.close()
         await self.server.wait_closed()
         await self.bridge.logout()
+        if self.db:
+            await self.db.close()
 
     async def reconfigure(self):
         print("Configuring channels...")
