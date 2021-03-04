@@ -11,6 +11,17 @@ def escape(text):
     return text
 
 
+def try_decode(text, default=None):
+    try:
+        return text.decode("utf-8")
+    except UnicodeDecodeError:
+        try:
+            return text.decode("latin-1")
+        except UnicodeDecodeError:
+            pass
+    return default
+
+
 class IRCSession(asyncio.Protocol):
     def __init__(self, server):
         self.server = server
@@ -24,6 +35,7 @@ class IRCSession(asyncio.Protocol):
         self.hostname = ""
         self.password = None
         self.authenticated = False
+        self.quit_reason = "Quit"
 
     def __str__(self):
         return f"{self.nickname}!{self.username}@{self.hostname}"
@@ -43,12 +55,14 @@ class IRCSession(asyncio.Protocol):
         self.buffer += data
         *lines, self.buffer = self.buffer.split(b"\r\n")
         for line in lines:
-            line = line.decode("utf-8")
+            line = try_decode(line)
+            if not line:
+                continue
             prefix = None
             if line.startswith(":"):
                 prefix, line = line[1:].split(None, 1)
             parts = line.split(" :", 1)
-            if not parts:
+            if not parts or not parts[0].strip():
                 continue
             cmd, *params = parts[0].split()
             if len(parts) > 1:
@@ -58,7 +72,9 @@ class IRCSession(asyncio.Protocol):
                 # TODO: check authentication for non-login-related commands
                 asyncio.create_task(handler(*params, prefix=prefix))
             else:
-                self.write(ERR.UNKNOWNCOMMAND, self.nickname or "*", cmd, "Unknown command")
+                self.write(
+                    ERR.UNKNOWNCOMMAND, self.nickname or "*", cmd, "Unknown command"
+                )
                 logging.debug('Unknown IRC command "%s" with params: %s', cmd, params)
 
     def write(self, code, *params, prefix=None):
@@ -79,8 +95,11 @@ class IRCSession(asyncio.Protocol):
     def join(self, user, channel):
         self.write("JOIN", channel.irc_name, prefix=user)
 
-    def part(self, user, channel):
-        self.write("PART", channel.irc_name, prefix=user)
+    def part(self, user, channel, reason):
+        self.write("PART", channel.irc_name, reason, prefix=user)
+
+    def quit(self, user, reason):
+        self.write("QUIT", reason, prefix=user)
 
     async def check_login(self, sasl=False):
         if self.authenticated:
@@ -88,7 +107,9 @@ class IRCSession(asyncio.Protocol):
         if self.username and self.nickname:
             if self.server.password and self.server.password != self.password:
                 self.write(
-                    "NOTICE", "AUTH", "*** You are not logged in, please use PASS to authenticate"
+                    "NOTICE",
+                    "AUTH",
+                    "*** You are not logged in, please use PASS to authenticate",
                 )
                 return
             self.authenticated = True
@@ -150,10 +171,11 @@ class IRCSession(asyncio.Protocol):
         self.write(RPL.ENDOFNAMES, self.nickname, channel.irc_name, "End of NAMES list")
 
     async def handle_PART(self, *params, prefix=None):
+        reason = params[1] if len(params) > 1 else "Leaving"
         for name in params[0].split(","):
             channel = self.server.channels.get(name[1:])
             if channel and self in channel.sessions:
-                channel.part(self)
+                channel.part(self, reason)
 
     async def handle_PRIVMSG(self, *params, prefix=None):
         if params[0].startswith("#"):
@@ -198,5 +220,7 @@ class IRCSession(asyncio.Protocol):
         self.write(RPL.LISTEND, self.nickname, "End of LIST")
 
     async def handle_QUIT(self, *params, prefix=None):
+        if params:
+            self.quit_reason = params[0]
         self.write("ERROR", "Bye for now!")
         self.transport.close()

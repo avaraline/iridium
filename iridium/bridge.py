@@ -17,7 +17,10 @@ class UserProxy:
     def join(self, user, channel):
         pass
 
-    def part(self, user, channel):
+    def part(self, user, channel, reason):
+        pass
+
+    def quit(self, user, reason):
         pass
 
     def message(self, content, sender=None):
@@ -62,7 +65,9 @@ class BridgeClient(discord.Client):
                 cmd, *args = shlex.split(message.content[1:])
                 if cmd in self.commands:
                     options = self.commands[cmd].copy()
-                    module_path = options.pop("module", "iridium.commands.{}.handle".format(cmd))
+                    module_path = options.pop(
+                        "module", "iridium.commands.{}.handle".format(cmd)
+                    )
                     mod_name, attr_name = module_path.rsplit(".", 1)
                     try:
                         mod = importlib.import_module(mod_name)

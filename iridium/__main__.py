@@ -50,7 +50,11 @@ def main():
     try:
         config = toml.load(args.config)
     except FileNotFoundError:
-        print(f"Could not load configuration from {args.config}", file=sys.stderr, flush=True)
+        print(
+            f"Could not load configuration from {args.config}",
+            file=sys.stderr,
+            flush=True,
+        )
         return 1
     server = Server(config)
     loop = asyncio.get_event_loop()

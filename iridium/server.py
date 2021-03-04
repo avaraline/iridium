@@ -47,7 +47,7 @@ class BridgeChannel:
         for user in set(new_members).difference(self.members):
             self.join(new_members[user])
         for user in set(self.members).difference(new_members):
-            self.part(self.members[user])
+            self.part(self.members[user], "Leaving")
         self.members = new_members
 
     def join(self, user):
@@ -56,9 +56,15 @@ class BridgeChannel:
         for session in self.sessions:
             session.join(user, self)
 
-    def part(self, user):
+    def part(self, user, reason):
         for session in self.sessions:
-            session.part(user, self)
+            session.part(user, self, reason)
+        if isinstance(user, IRCSession) and user in self.sessions:
+            self.sessions.remove(user)
+
+    def quit(self, user, reason):
+        for session in self.sessions:
+            session.quit(user, reason)
         if isinstance(user, IRCSession) and user in self.sessions:
             self.sessions.remove(user)
 
@@ -75,7 +81,7 @@ class BridgeChannel:
 
     def clear(self):
         for session in self.sessions:
-            session.part(session, self)
+            session.part(session, self, "RIP")
         self.sessions = []
 
 
@@ -157,7 +163,7 @@ class Server:
 
     async def disconnected(self, session):
         for channel in self.channels.values():
-            channel.part(session)
+            channel.quit(session, session.quit_reason)
         self.sessions.remove(session)
 
     def valid_nick(self, nick):
