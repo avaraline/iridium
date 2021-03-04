@@ -60,6 +60,8 @@ class BridgeClient(discord.Client):
             channel = self.irc.channels.get(message.channel.name)
             if channel:
                 channel.message(message.clean_content, sender=UserProxy(message.author))
+            # Potentially log the message.
+            await self.irc.log(message)
             # Handle chat commands.
             if message.content.startswith("!") and message.author != self.user:
                 cmd, *args = shlex.split(message.content[1:])

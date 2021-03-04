@@ -1,4 +1,7 @@
 import asyncio
+import sys
+
+import aiosqlite
 
 from .bridge import BridgeClient, UserProxy
 from .irc import IRCSession
@@ -15,7 +18,7 @@ class BridgeChannel:
         self.sessions = []
         self.webhook = None
         self.default = False
-        self.log = False
+        self.log = True
 
     @property
     def num_users(self):
@@ -98,6 +101,7 @@ class Server:
         self.port = self.config.get("irc", {}).get("port", 6667)
         self.automap = self.config.get("irc", {}).get("automap", True)
         self.channels = {}
+        self.db = None
 
     @property
     def default_channel(self):
@@ -117,6 +121,25 @@ class Server:
             port=self.port,
             start_serving=False,
         )
+        db_file = self.config.get("logging", {}).get("messages")
+        if db_file:
+            self.db = await aiosqlite.connect(
+                db_file, loop=self.loop, isolation_level=None
+            )
+            async with self.db.execute("pragma table_info(logs)") as cursor:
+                cols = await cursor.fetchall()
+                if not cols:
+                    await cursor.execute(
+                        """
+                        CREATE TABLE logs (
+                            id INTEGER PRIMARY KEY,
+                            timestamp INTEGER,
+                            channel TEXT,
+                            nickname TEXT,
+                            message TEXT
+                        )
+                        """
+                    )
         self.bridge = BridgeClient(self, loop=self.loop)
         await self.bridge.start(self.config["discord"]["token"])
 
@@ -165,6 +188,26 @@ class Server:
         for channel in self.channels.values():
             channel.quit(session, session.quit_reason)
         self.sessions.remove(session)
+
+    async def log(self, message):
+        if self.db:
+            params = [
+                message.id,
+                int(message.created_at.timestamp()),
+                message.channel.name,
+                message.author.display_name,
+                message.clean_content,
+            ]
+            try:
+                await self.db.execute(
+                    """
+                    INSERT INTO logs (id, timestamp, channel, nickname, message)
+                    VALUES (?, ?, ?, ?, ?)
+                    """,
+                    params,
+                )
+            except Exception:
+                print("LOG FAILED:", params, file=sys.stderr)
 
     def valid_nick(self, nick):
         for session in self.sessions:
