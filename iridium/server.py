@@ -73,7 +73,10 @@ class BridgeChannel:
 
     def message(self, content, sender=None):
         if isinstance(sender, IRCSession):
-            asyncio.create_task(self.webhook.send(content, username=sender.nickname))
+            if sender in self.sessions:
+                asyncio.create_task(
+                    self.webhook.send(content, username=sender.nickname)
+                )
         else:
             for session in self.sessions:
                 session.message(content, sender=sender, channel=self)

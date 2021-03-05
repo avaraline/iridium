@@ -22,6 +22,18 @@ def try_decode(text, default=None):
     return default
 
 
+UNAUTH_COMMANDS = set(
+    [
+        "PING",
+        "PASS",
+        "USER",
+        "NICK",
+        "CAP",
+        "QUIT",
+    ]
+)
+
+
 class IRCSession(asyncio.Protocol):
     def __init__(self, server):
         self.server = server
@@ -69,8 +81,14 @@ class IRCSession(asyncio.Protocol):
                 params.append(parts[1])
             handler = getattr(self, "handle_{}".format(cmd.upper()), None)
             if handler:
-                # TODO: check authentication for non-login-related commands
-                asyncio.create_task(handler(*params, prefix=prefix))
+                if cmd.upper() not in UNAUTH_COMMANDS and not self.authenticated:
+                    self.write(
+                        ERR.NOTREGISTERED,
+                        self.nickname or "*",
+                        "You are not registered.",
+                    )
+                else:
+                    asyncio.create_task(handler(*params, prefix=prefix))
             else:
                 self.write(
                     ERR.UNKNOWNCOMMAND, self.nickname or "*", cmd, "Unknown command"
@@ -79,7 +97,9 @@ class IRCSession(asyncio.Protocol):
 
     def write(self, code, *params, prefix=None):
         start = ":{}".format(prefix or self.server.name)
-        line = "{} {} {}\r\n".format(start, code, " ".join(escape(p) for p in params))
+        *first, last = [str(p) for p in params]
+        joined = " ".join(first) + (" " if first else "")
+        line = "{} {} {}:{}\r\n".format(start, code, joined, last)
         self.transport.write(line.encode("utf-8"))
 
     def message(self, content, sender=None, channel=None):
@@ -181,11 +201,27 @@ class IRCSession(asyncio.Protocol):
         if params[0].startswith("#"):
             channel = self.server.channels.get(params[0][1:])
             if channel:
-                channel.message(params[1], sender=self)
+                if self in channel.sessions:
+                    channel.message(params[1], sender=self)
+                else:
+                    self.write(
+                        ERR.CANNOTSENDTOCHAN,
+                        self.nickname,
+                        channel.irc_name,
+                        "You have not joined this channel.",
+                    )
+            else:
+                self.write(
+                    ERR.NOSUCHCHANNEL, self.nickname, params[0], "No such channel."
+                )
         else:
             user = self.server.user(params[0])
             if user:
                 user.message(params[1], sender=self)
+            else:
+                self.write(
+                    ERR.NOSUCHNICK, self.nickname, params[0], "No such nickname."
+                )
 
     async def handle_MODE(self, *params, prefix=None):
         pass
