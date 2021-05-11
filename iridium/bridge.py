@@ -4,6 +4,16 @@ import shlex
 import discord
 
 
+def filesize(size, decimal_places=1):
+    for unit in ("bytes", "KB", "MB", "GB", "TB"):
+        if size < 1024.0 or unit == "TB":
+            break
+        size /= 1024.0
+    if unit == "bytes":
+        decimal_places = 0
+    return f"{size:.{decimal_places}f} {unit}"
+
+
 class UserProxy:
     def __init__(self, member):
         self.nickname = member.display_name.replace(" ", "_")
@@ -59,7 +69,15 @@ class BridgeClient(discord.Client):
         if message.channel.type == discord.ChannelType.text:
             channel = self.irc.channels.get(message.channel.name)
             if channel:
-                channel.message(message.clean_content, sender=UserProxy(message.author))
+                for line in message.clean_content.splitlines():
+                    channel.message(line, sender=UserProxy(message.author))
+                for att in message.attachments:
+                    line = "%s (%s - %s)" % (
+                        att.url,
+                        att.filename,
+                        filesize(att.size),
+                    )
+                    channel.message(line, sender=UserProxy(message.author))
             # Potentially log the message.
             await self.irc.log(message)
             # Handle chat commands.
