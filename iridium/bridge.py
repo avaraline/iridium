@@ -99,7 +99,6 @@ class BridgeClient(discord.Client):
                         pass
                     except Exception:
                         pass
-        print (message.content)
 
     async def on_message_edit(self, before, after):
         after.content = f"* {after.content}"
