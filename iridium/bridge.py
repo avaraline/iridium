@@ -99,6 +99,11 @@ class BridgeClient(discord.Client):
                         pass
                     except Exception:
                         pass
+        print (message.content)
+
+    async def on_message_edit(self, before, after):
+        after.content = f"* {after.content}"
+        await self.on_message(after)
 
     async def on_guild_channel_delete(self, channel):
         await self.irc.reconfigure()
@@ -123,3 +128,15 @@ class BridgeClient(discord.Client):
                 if session.authenticated:
                     session.write("NICK", new_nickname, prefix=old_nickname)
         await self.irc.sync_channels()
+
+    async def on_reaction_add(self, reaction, member):
+        message = reaction.message
+        if message.channel.type == discord.ChannelType.text:
+            channel = self.irc.channels.get(message.channel.name)
+            if channel:
+                target = str(message.author.name)
+                source = UserProxy(member)
+                content = reaction.emoji
+                if not isinstance(reaction.emoji, str):
+                    content = reaction.emoji.url
+                channel.message(f"{target}: {content}", sender=source)
