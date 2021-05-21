@@ -1,0 +1,20 @@
+[irc]
+name = "Iridium"
+bind = "0.0.0.0"
+port = 6667
+# irc password - leave blank for none
+password = ""
+# map all discord channels to irc channels
+automap = true
+
+[discord]
+token = "big long token key"
+guild_id = 0
+
+[channels]
+	# each manually mapped channel 
+	# gets its own section
+	[general]
+	default = true
+	log = true
+	webhook = "IRC"

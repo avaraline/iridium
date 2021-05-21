@@ -14,6 +14,13 @@ def filesize(size, decimal_places=1):
     return f"{size:.{decimal_places}f} {unit}"
 
 
+def ircquote(message):
+    author = message.author.name
+    msgtxt = message.clean_content.splitlines()
+    msgtxt = f"{msgtxt[0]}[...]" if len(msgtxt) > 1 else msgtxt[0]
+    return f"<{author}> {msgtxt}"
+
+
 class UserProxy:
     def __init__(self, member):
         self.nickname = member.display_name.replace(" ", "_")
@@ -69,17 +76,44 @@ class BridgeClient(discord.Client):
         if message.channel.type == discord.ChannelType.text:
             channel = self.irc.channels.get(message.channel.name)
             if channel:
-                for line in message.clean_content.splitlines():
-                    channel.message(line, sender=UserProxy(message.author))
+                source = UserProxy(message.author)
+
+                # send text to the IRC channel
+                def send(text):
+                    channel.message(text, sender=source)
+                
+                # send a message to the IRC channel
+                def sendmsg(message):
+                    for line in message.clean_content.splitlines():
+                        send(line)
+
+                # a message is a reply if it has a reference 
+                # pins also have references, but they are system type
+                is_reply = message.reference is not None
+                is_reply = is_reply and not message.is_system()
+
+                if is_reply:
+                    # check if the original message is cached or
+                    # was loaded by the API
+                    original = message.reference.resolved
+                    if original is not None:
+                        send(ircquote(original))
+                        sendmsg(message)
+                    else:
+                        # did not find original message for reply
+                        # whatever, just send the message
+                        sendmsg(message)
+                else:
+                    # not a reply, send the message
+                    sendmsg(message)
+
+                # send links to attachments
                 for att in message.attachments:
-                    line = "%s (%s - %s)" % (
-                        att.url,
-                        att.filename,
-                        filesize(att.size),
-                    )
-                    channel.message(line, sender=UserProxy(message.author))
+                    send(f"{att.url} ({att.filename} - {att.size})")
+
             # Potentially log the message.
             await self.irc.log(message)
+            
             # Handle chat commands.
             if message.content.startswith("!") and message.author != self.user:
                 cmd, *args = shlex.split(message.content[1:])
@@ -99,6 +133,10 @@ class BridgeClient(discord.Client):
                         pass
                     except Exception:
                         pass
+
+    async def on_message_edit(self, before, after):
+        after.content = f"* {after.content}"
+        await self.on_message(after)
 
     async def on_guild_channel_delete(self, channel):
         await self.irc.reconfigure()
@@ -123,3 +161,18 @@ class BridgeClient(discord.Client):
                 if session.authenticated:
                     session.write("NICK", new_nickname, prefix=old_nickname)
         await self.irc.sync_channels()
+
+    async def on_reaction_add(self, reaction, member):
+        message = reaction.message
+        if message.channel.type == discord.ChannelType.text:
+            channel = self.irc.channels.get(message.channel.name)
+            if channel:
+                source = UserProxy(member)
+                content = reaction.emoji
+                # content is either a custom emoji object
+                # or just a UTF character that we can simply send
+                if not isinstance(reaction.emoji, str):
+                    content = reaction.emoji.url
+                # everyone on IRC must know what the reaction is to!
+                channel.message(ircquote(message), sender=source)
+                channel.message(content, sender=source)

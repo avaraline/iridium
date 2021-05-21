@@ -198,11 +198,20 @@ class IRCSession(asyncio.Protocol):
                 channel.part(self, reason)
 
     async def handle_PRIVMSG(self, *params, prefix=None):
+        content = params[1]
+
+        # translate 0x01ACTION text0x01 to _text_
+        cbytes = str.encode(content, 'ascii')
+        if (cbytes[0] == 0x01 and 
+            cbytes[-1] == 0x01 and 
+            content[1:8] == "ACTION "):
+            content = f"_{content[8:-1]}_"
+
         if params[0].startswith("#"):
             channel = self.server.channels.get(params[0][1:])
             if channel:
                 if self in channel.sessions:
-                    channel.message(params[1], sender=self)
+                    channel.message(content, sender=self)
                 else:
                     self.write(
                         ERR.CANNOTSENDTOCHAN,
@@ -217,7 +226,7 @@ class IRCSession(asyncio.Protocol):
         else:
             user = self.server.user(params[0])
             if user:
-                user.message(params[1], sender=self)
+                user.message(content, sender=self)
             else:
                 self.write(
                     ERR.NOSUCHNICK, self.nickname, params[0], "No such nickname."
