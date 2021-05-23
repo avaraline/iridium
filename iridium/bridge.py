@@ -151,8 +151,9 @@ class BridgeClient(discord.Client):
                         pass
 
     async def on_message_edit(self, before, after):
-        after.content = f"* {after.content}"
-        await self.on_message(after)
+        if before.content != after.content:
+            after.content = f"* {after.content}"
+            await self.on_message(after)
 
     async def on_guild_channel_delete(self, channel):
         await self.irc.reconfigure()
