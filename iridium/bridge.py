@@ -2,6 +2,7 @@ import importlib
 import shlex
 
 import discord
+from collections import deque
 
 
 def filesize(size, decimal_places=1):
@@ -49,11 +50,21 @@ class BridgeClient(discord.Client):
         self.irc = server
         self.guild = None
         self.commands = self.irc.config.get("commands", {})
+        # store ids and authors of messages we send
+        # so that reply quotes aren't sent if the quoted
+        # message just occurred
+        self.msg_id_buffa = deque([], 2)
+        self.msg_author_buffa = deque([], 2)
         # Make sure we add the members intent, so we can access member information.
         intents = discord.Intents.default()
         intents.members = True
         options["intents"] = intents
         super().__init__(**options)
+
+    def is_old(self, msg):
+        # check ring buffers for msg id and author
+        return (msg.id not in self.msg_id_buffa and
+        msg.author not in self.msg_author_buffa)
 
     def named_channel(self, name):
         for channel in self.guild.text_channels:
@@ -81,6 +92,8 @@ class BridgeClient(discord.Client):
                 # send text to the IRC channel
                 def send(text):
                     channel.message(text, sender=source)
+                    self.msg_id_buffa.append(message.id)
+                    self.msg_author_buffa.append(message.author)
                 
                 # send a message to the IRC channel
                 def sendmsg(message):
@@ -97,7 +110,10 @@ class BridgeClient(discord.Client):
                     # was loaded by the API
                     original = message.reference.resolved
                     if original is not None:
-                        send(ircquote(original))
+                        # only send a quote if it wasn't in the last
+                        # couple messages.
+                        if self.is_old(original):
+                            send(ircquote(original))
                         sendmsg(message)
                     else:
                         # did not find original message for reply
@@ -135,8 +151,9 @@ class BridgeClient(discord.Client):
                         pass
 
     async def on_message_edit(self, before, after):
-        after.content = f"* {after.content}"
-        await self.on_message(after)
+        if before.content != after.content:
+            after.content = f"* {after.content}"
+            await self.on_message(after)
 
     async def on_guild_channel_delete(self, channel):
         await self.irc.reconfigure()
@@ -174,5 +191,6 @@ class BridgeClient(discord.Client):
                 if not isinstance(reaction.emoji, str):
                     content = reaction.emoji.url
                 # everyone on IRC must know what the reaction is to!
-                channel.message(ircquote(message), sender=source)
+                if self.is_old(message):
+                    channel.message(ircquote(message), sender=source)
                 channel.message(content, sender=source)
