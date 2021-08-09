@@ -1,8 +1,8 @@
 import importlib
 import shlex
+from collections import deque
 
 import discord
-from collections import deque
 
 
 def filesize(size, decimal_places=1):
@@ -63,8 +63,9 @@ class BridgeClient(discord.Client):
 
     def is_old(self, msg):
         # check ring buffers for msg id and author
-        return (msg.id not in self.msg_id_buffa and
-        msg.author not in self.msg_author_buffa)
+        return (
+            msg.id not in self.msg_id_buffa and msg.author not in self.msg_author_buffa
+        )
 
     def named_channel(self, name):
         for channel in self.guild.text_channels:
@@ -94,13 +95,13 @@ class BridgeClient(discord.Client):
                     channel.message(text, sender=source)
                     self.msg_id_buffa.append(message.id)
                     self.msg_author_buffa.append(message.author)
-                
+
                 # send a message to the IRC channel
                 def sendmsg(message):
                     for line in message.clean_content.splitlines():
                         send(line)
 
-                # a message is a reply if it has a reference 
+                # a message is a reply if it has a reference
                 # pins also have references, but they are system type
                 is_reply = message.reference is not None
                 is_reply = is_reply and not message.is_system()
@@ -129,7 +130,7 @@ class BridgeClient(discord.Client):
 
             # Potentially log the message.
             await self.irc.log(message)
-            
+
             # Handle chat commands.
             if message.content.startswith("!") and message.author != self.user:
                 cmd, *args = shlex.split(message.content[1:])

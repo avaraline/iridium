@@ -1,0 +1,10 @@
+.DS_Store
+__pycache__
+.vscode
+.git
+*.pyc
+*.db
+*.egg-info
+/build
+/dist
+/iridium.toml

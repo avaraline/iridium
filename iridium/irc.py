@@ -201,10 +201,8 @@ class IRCSession(asyncio.Protocol):
         content = params[1]
 
         # translate 0x01ACTION text0x01 to _text_
-        cbytes = str.encode(content, 'ascii')
-        if (cbytes[0] == 0x01 and 
-            cbytes[-1] == 0x01 and 
-            content[1:8] == "ACTION "):
+        cbytes = str.encode(content, "ascii")
+        if cbytes[0] == 0x01 and cbytes[-1] == 0x01 and content[1:8] == "ACTION ":
             content = f"_{content[8:-1]}_"
 
         if params[0].startswith("#"):
