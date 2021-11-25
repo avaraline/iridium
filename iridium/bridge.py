@@ -45,6 +45,14 @@ class UserProxy:
         pass
 
 
+def is_online(member):
+    return m.status == discord.Status.online
+
+
+def get_user_proxies(channel):
+    return {m.name: UserProxy(m) for m in channel.members if is_online(m)}
+
+
 class BridgeClient(discord.Client):
     def __init__(self, server, **options):
         self.irc = server

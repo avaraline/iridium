@@ -3,7 +3,7 @@ import sys
 
 import aiosqlite
 
-from .bridge import BridgeClient, UserProxy
+from .bridge import BridgeClient, get_user_proxies
 from .irc import IRCSession
 
 
@@ -37,7 +37,7 @@ class BridgeChannel:
                 break
         if self.webhook is None:
             self.webhook = await channel.create_webhook(name=webhook_name)
-        self.members = {m.name: UserProxy(m) for m in channel.members}
+        self.members = get_user_proxies(channel)
 
     async def sync(self, bridge):
         channel = bridge.named_channel(self.name)
@@ -46,7 +46,7 @@ class BridgeChannel:
             self.topic = new_topic
             for session in self.sessions:
                 session.write("TOPIC", self.irc_name, self.topic)
-        new_members = {m.name: UserProxy(m) for m in channel.members}
+        new_members = get_user_proxies(channel)
         for user in set(new_members).difference(self.members):
             self.join(new_members[user])
         for user in set(self.members).difference(new_members):
