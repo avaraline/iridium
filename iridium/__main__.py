@@ -37,6 +37,7 @@ def default_config():
                 "repo": "",
                 "labels": [],
             },
+            "math": {}
         },
     }
 
