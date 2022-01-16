@@ -1,3 +1,4 @@
+# flake8: noqa
 tokens = ("NAME", "INT", "FLOAT", "TIMES", "POW", "PLUS", "MINUS", "DIV")
 
 literals = ['(', ')']

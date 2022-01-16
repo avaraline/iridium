@@ -1,5 +1,6 @@
 from .parser import evaluate
 
+
 async def handle(message, *args):
     try:
         result = str(evaluate("".join(args)))
