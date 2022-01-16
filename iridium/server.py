@@ -3,7 +3,7 @@ import sys
 
 import aiosqlite
 
-from .bridge import BridgeClient, get_user_proxies
+from .bridge import BridgeClient, UserProxy, get_user_proxies
 from .irc import IRCSession
 
 
