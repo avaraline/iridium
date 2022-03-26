@@ -48,12 +48,8 @@ class UserProxy:
         pass
 
 
-def is_online(member):
-    return member.status == discord.Status.online
-
-
 def get_user_proxies(channel):
-    return {m.name: UserProxy(m) for m in channel.members if is_online(m)}
+    return {m.name: UserProxy(m) for m in channel.members}
 
 
 class BridgeClient(discord.Client):
@@ -67,10 +63,8 @@ class BridgeClient(discord.Client):
         self.msg_id_buffa = deque([], 2)
         self.msg_author_buffa = deque([], 2)
         # Make sure we add the members intent, so we can access member information.
-        # Presences is needed to accurately update the IRC userlist.
         intents = discord.Intents.default()
         intents.members = True
-        intents.presences = True
         options["intents"] = intents
         super().__init__(**options)
 
