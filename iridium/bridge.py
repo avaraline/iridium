@@ -1,8 +1,12 @@
 import importlib
 import shlex
+import re
 from collections import deque
 
 import discord
+
+
+EMOJI_URL = "https://cdn.discordapp.com/emojis/"
 
 
 def filesize(size, decimal_places=1):
@@ -45,6 +49,14 @@ class UserProxy:
         pass
 
 
+def is_online(member):
+    return member.status == discord.Status.online
+
+
+def get_user_proxies(channel):
+    return {m.name: UserProxy(m) for m in channel.members if is_online(m)}
+
+
 class BridgeClient(discord.Client):
     def __init__(self, server, **options):
         self.irc = server
@@ -56,8 +68,10 @@ class BridgeClient(discord.Client):
         self.msg_id_buffa = deque([], 2)
         self.msg_author_buffa = deque([], 2)
         # Make sure we add the members intent, so we can access member information.
+        # Presences is needed to accurately update the IRC userlist.
         intents = discord.Intents.default()
         intents.members = True
+        intents.presences = True
         options["intents"] = intents
         super().__init__(**options)
 
@@ -92,6 +106,10 @@ class BridgeClient(discord.Client):
 
                 # send text to the IRC channel
                 def send(text):
+                    # replace "<:emoji:biglongidnumber>" with a link to an image
+                    custom_emoji = re.findall(r'(<a?:(\w*):(\d*)>)', text)
+                    for ce in custom_emoji:
+                        text = text.replace(ce[0], f"{EMOJI_URL}{ce[2]}.png")
                     channel.message(text, sender=source)
                     self.msg_id_buffa.append(message.id)
                     self.msg_author_buffa.append(message.author)
