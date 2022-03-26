@@ -2,8 +2,10 @@ import aiohttp
 
 ENDPOINT = "http://api.openweathermap.org/data/2.5/weather"
 
+
 def to_c(f):
     return (f - 32) * 5.0 / 9.0
+
 
 async def handle(message, *args, appid=None):
     if not appid:
@@ -19,15 +21,12 @@ async def handle(message, *args, appid=None):
     async with aiohttp.ClientSession() as session:
         async with session.get(ENDPOINT, params=params) as resp:
             data = await resp.json()
-            
+
             unit = "F"
             temp = data["main"]["temp"]
             feels_like = data["main"]["feels_like"]
 
-
-            metric = not data["sys"]["country"] in ["US", "MM", "LR"]
-
-            if metric:
+            if data["sys"]["country"] not in ["US", "MM", "LR"]:
                 unit = "C"
                 temp = to_c(temp)
                 feels_like = to_c(feels_like)

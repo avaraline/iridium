@@ -1,10 +1,9 @@
 import importlib
-import shlex
 import re
+import shlex
 from collections import deque
 
 import discord
-
 
 EMOJI_URL = "https://cdn.discordapp.com/emojis/"
 
@@ -107,7 +106,7 @@ class BridgeClient(discord.Client):
                 # send text to the IRC channel
                 def send(text):
                     # replace "<:emoji:biglongidnumber>" with a link to an image
-                    custom_emoji = re.findall(r'(<a?:(\w*):(\d*)>)', text)
+                    custom_emoji = re.findall(r"(<a?:(\w*):(\d*)>)", text)
                     for ce in custom_emoji:
                         text = text.replace(ce[0], f"{EMOJI_URL}{ce[2]}.png")
                     channel.message(text, sender=source)

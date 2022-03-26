@@ -3,7 +3,8 @@ import math
 
 class Number(object):
     """technically, this simply evaluates to whatever you
-       put in it. But you probably want to put a number in it."""
+    put in it. But you probably want to put a number in it."""
+
     def __init__(self, num):
         self.num = num
 
@@ -13,6 +14,7 @@ class Number(object):
 
 class InfixOp(object):
     """this covers +, -, *, /. Probably other stuff too."""
+
     def __init__(self, op, expr1, expr2):
         self.expr1 = expr1
         self.expr2 = expr2
@@ -23,7 +25,8 @@ class InfixOp(object):
 
 
 class NumericalOp(object):
-    "covers things like sin, log, tan, arccos, abs, etc"
+    """covers things like sin, log, tan, arccos, abs, etc"""
+
     def __init__(self, op, expr):
         self.expr = expr
         self.op = op
@@ -40,7 +43,7 @@ def smartpow(a, b):
     if b > 100:
         raise Exception("Exponent too large.")
     else:
-        return a ** b
+        return a**b
 
 
 def log2(n):
