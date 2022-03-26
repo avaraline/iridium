@@ -7,14 +7,28 @@ password = ""
 # map all discord channels to irc channels
 automap = true
 
+# discord token and server ID
 [discord]
 token = "big long token key"
 guild_id = 0
 
+# manual channel mapping
 [channels]
-	# each manually mapped channel 
-	# gets its own section
-	[general]
-	default = true
-	log = true
-	webhook = "IRC"
+    # each channel gets its own section
+    [channels.general]
+        default = true
+        log = true
+        webhook = "IRC"
+
+# set up commands
+[commands]
+    # each command gets its own section
+    [commands.math] # needs no configuration
+    # [commands.weather]
+    #   appid = 0 # openweathermap api key
+    # [commands.issue]
+    #   user = "" # github username
+    #   token = "" # github token
+    #   repo = "" # repo to open issues with
+    #   labels = ["bug", "good-first-issue"] 
+
