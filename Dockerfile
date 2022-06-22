@@ -11,8 +11,14 @@ RUN pip install --no-cache-dir -Ur /iridium/requirements.txt
 
 COPY . /iridium
 
+RUN set -x && \
+    mkdir -p /data && \
+    python -m compileall -f -q /iridium
+
 WORKDIR /iridium
+
+VOLUME ["/data"]
 
 EXPOSE 6667
 
-CMD ["python", "-m", "iridium"]
+CMD ["python", "-m", "iridium", "-c", "/etc/iridium.toml"]

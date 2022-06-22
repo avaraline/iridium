@@ -149,7 +149,7 @@ class Server:
     async def stop(self):
         self.server.close()
         await self.server.wait_closed()
-        await self.bridge.logout()
+        await self.bridge.close()
         if self.db:
             await self.db.close()
 
