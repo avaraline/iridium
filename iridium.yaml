@@ -41,7 +41,8 @@ spec:
               protocol: TCP
           volumeMounts:
             - name: config
-              mountPath: "/etc"
+              mountPath: "/etc/iridium.toml"
+              subPath: iridium.toml
             - name: data
               mountPath: "/data"
 ---
