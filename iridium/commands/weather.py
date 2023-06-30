@@ -65,6 +65,7 @@ async def handle(message, *args, appid=None, airnow=None):
             }
             async with session.get(AQI_ENDPOINT, params=params) as resp:
                 aqi_data = await resp.json()
-                weather += " ({})".format(get_aqi(aqi_data))
+                if aqi_data:
+                    weather += " ({})".format(get_aqi(aqi_data))
 
         await message.reply(weather)
